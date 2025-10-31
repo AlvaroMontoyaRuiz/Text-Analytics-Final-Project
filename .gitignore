@@ -400,10 +400,4 @@ FodyWeavers.xsd
 *.sln.iml
 
 # Dataset Folders
-Model Filtering/mimic-iii-clinical-database-1.4
-Model Filtering/curated-data-for-describing-blood-glucose-management-in-the-intensive-care-unit-1.0.1
-Model Filtering/MIMIC-IV Clinic Notes
-Model Filtering/clean_NOTEEVENTS.csv
-
-# PyCharm files
-.idea
+Datasets/
