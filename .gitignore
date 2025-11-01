@@ -400,4 +400,7 @@ FodyWeavers.xsd
 *.sln.iml
 
 # Dataset Folders
-Datasets/
+data/
+
+# Environment Files
+.env

@@ -1,0 +1,13 @@
+streamlit
+openai
+pinecone
+python-dotenv
+tiktoken
+bcrypt
+unstructured
+python-docx
+langchain
+pip install -qU langchain-text-splitters
+python-magic-bin
+langchain-community 
+langchain-core
