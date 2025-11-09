@@ -400,7 +400,10 @@ FodyWeavers.xsd
 *.sln.iml
 
 # Dataset Folders
-Datasets/
+Datasets/discharge.csv
+Datasets/test.json
+Datasets/discharge.csv:Zone.Identifier
+Agent/data
 
 # Environment Files
 .env
