@@ -1,11 +1,19 @@
+# Core App & AI
 streamlit
 openai
 google-generativeai
+
+# Vector Database
 pinecone
+
+# Data Ingestion & RAG
 langchain-community
 langchain-core
 langchain-text-splitters
 unstructured
 python-docx
 tiktoken
+
+# Auth & Environment
+bcrypt
 python-dotenv
