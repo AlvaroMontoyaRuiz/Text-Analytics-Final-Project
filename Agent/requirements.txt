@@ -11,3 +11,4 @@ pip install -qU langchain-text-splitters
 python-magic-bin
 langchain-community 
 langchain-core
+google-generativeai
