@@ -1,14 +1,18 @@
 #!/usr/bin/env python3
-
+"""
+agents.py
+Defines a HYBRID multi-agent system.
+- ManagerAgent: Uses Google Gemini Pro for classification.
+- Worker Agents: Use OpenAI gpt-4o-mini for task execution.
+"""
 import os
 import json
 import traceback
 from typing import List, Dict, Optional, Any
 
-# --- MODIFIED: Import both clients ---
+# --- Import both clients ---
 from openai import OpenAI
 import google.generativeai as genai
-# --- MODIFIED: Tool is no longer imported ---
 from google.generativeai.types import (
     FunctionDeclaration, 
     GenerationConfig,
@@ -20,7 +24,6 @@ from google.generativeai.types import (
 import tools
 
 # --- OpenAI Tool Definitions (for Worker Agents) ---
-# (These are unchanged)
 WORKER_TOOL_DECLARATION = [
     {
         "type": "function",
@@ -63,7 +66,7 @@ TOOL_REGISTRY = {
 }
 
 
-# --- NEW: Gemini Tool Definition (for Manager Agent) ---
+# --- Gemini Tool Definition (for Manager Agent) ---
 MANAGER_FUNCTION_DECLARATION = FunctionDeclaration(
     name="route_query",
     description="Routes the user's query to the correct agent based on its intent.",
@@ -80,9 +83,6 @@ MANAGER_FUNCTION_DECLARATION = FunctionDeclaration(
     },
 )
 
-# --- REMOVED: MANAGER_TOOL = genai.Tool(...) ---
-# This was the line causing the error.
-
 # Gemini safety settings
 SAFETY_SETTINGS = {
     HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
@@ -93,7 +93,6 @@ SAFETY_SETTINGS = {
 
 
 # --- Base Agent Class (OpenAI) ---
-# (This class is unchanged)
 class BaseAgent:
     """Base class for OpenAI agents with function calling"""
     def __init__(
@@ -176,7 +175,6 @@ class BaseAgent:
 
 # --- Specialized Agents ---
 
-# --- MODIFIED: ManagerAgent (now uses Gemini) ---
 class ManagerAgent:
     """
     Classifies user intent by FORCING a function call.
@@ -198,7 +196,6 @@ You MUST call the `route_query` function with your decision.
         self.model = genai.GenerativeModel(
             model_name=model_name,
             system_instruction=self.system_prompt,
-            # --- MODIFIED: Pass the FunctionDeclaration directly ---
             tools=[MANAGER_FUNCTION_DECLARATION], 
             generation_config=GenerationConfig(temperature=0.0),
             safety_settings=SAFETY_SETTINGS
@@ -213,21 +210,25 @@ You MUST call the `route_query` function with your decision.
         print(f"Query: {query}")
         
         try:
-            # Gemini's equivalent of "tool_choice"
-            tool_config = {"function_calling_config": {"mode": "ANY", "allowed_function_names": ["route_query"]}}
+            # Force the model to call our routing function
+            tool_config = {"function_calling_config": {"mode": "FUNCTION", "allowed_function_names": ["route_query"]}}
             
             response = self.model.generate_content(
                 query,
                 tool_config=tool_config
             )
             
+            if not response.candidates[0].content.parts or not response.candidates[0].content.parts[0].function_call:
+                 print("Error: Manager agent did not call a function, it returned text.")
+                 return "Ambiguous"
+
             fc = response.candidates[0].content.parts[0].function_call
             if fc.name == "route_query":
-                classification = fc.args["intent"]
+                classification = fc.args.get("intent", "Ambiguous")
                 print(f"Classification: {classification}")
                 return classification
             else:
-                print("Error: Manager agent did not call the expected 'route_query' function.")
+                print(f"Error: Manager agent called an unexpected function: {fc.name}")
                 return "Ambiguous"
 
         except Exception as e:
@@ -235,8 +236,6 @@ You MUST call the `route_query` function with your decision.
             traceback.print_exc()
             return "Ambiguous" # Default to ambiguous on error
 
-
-# --- Worker Agents (Unchanged, still use OpenAI BaseAgent) ---
 
 class PatientHistoryAgent(BaseAgent):
     """
