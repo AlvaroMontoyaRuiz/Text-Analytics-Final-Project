@@ -9,7 +9,10 @@ import re
 import traceback 
 from typing import List, Dict, Optional, Tuple 
 
-# Import all three agents
+# --- ADD THIS LINE ---
+import google.generativeai as genai 
+
+# --- NEW: Import OpenAI-based agent classes ---
 from agents import ManagerAgent, PatientHistoryAgent, DischargeAgent
 
 # Import SQLite/Auth files
@@ -28,8 +31,6 @@ APP_TITLE = "Smart Chat Pro - Clinical Assistant"
 APP_ICON = "🤖"
 OPENAI_MODEL = "gpt-4o-mini" 
 WORKER_MODEL = "gpt-4o-mini" # The OpenAI model for workers
-
-# --- MODIFIED: Use the correct Gemini 1.5 Pro model name ---
 MANAGER_MODEL = "gemini-1.5-pro-latest" 
 
 MAX_CONTEXT_TOKENS = 120000 
@@ -37,8 +38,6 @@ MAX_MESSAGES_TO_SEND = 15
 DB_FILENAME = "chat_app.db"
 SESSION_DIR = "session"
 DB_PATH = os.path.join(SESSION_DIR, DB_FILENAME) 
-
-# --- REMOVED: load_dotenv() ---
 
 # --- Initialize Clients (Both OpenAI and Gemini using st.secrets) ---
 
@@ -99,7 +98,6 @@ except Exception as e:
 
 
 # --- Helper Functions (export_session_json, search_sessions) ---
-# (These functions are COMPLETELY UNCHANGED)
 def export_session_json(session_id: str) -> str:
     try:
         messages = db.get_session_messages(session_id)
@@ -398,13 +396,11 @@ else:
 
         # --- MODIFIED Main Processing Logic (Multi-Agent) ---
         if user_input:
-            # 1. Validate Input (Unchanged)
             is_valid, error_message = validate_input(user_input)
             if not is_valid:
                 with st.chat_message("assistant", avatar="🚨"):
                     st.error(f"Input Blocked: {error_message}")
             else:
-                # 2. Add USER message to UI state and DB (Unchanged)
                 is_regeneration = st.session_state.pop('_regenerating_now', False) 
                 if not is_regeneration:
                     st.session_state.messages.append({"role": "user", "content": user_input})
@@ -416,13 +412,11 @@ else:
                     except Exception as e:
                         st.error(f"Failed to save your message: {e}")
 
-                # 3. --- MULTI-AGENT WORKFLOW ---
                 final_response = ""
                 agent_to_run = None
                 LAST_RETRIEVED_CONTEXT["content"] = "" 
 
                 try:
-                    # 3a. Extract Patient ID or Name (Unchanged)
                     patient_id_filter = None
                     patient_name_filter = None
                     
@@ -439,27 +433,23 @@ else:
                             patient_name_filter = patient_name_filter.strip()
 
                     
-                    # 3b. Check for *any* identifier (Unchanged)
                     if not patient_id_filter and not patient_name_filter:
                         final_response = "I cannot proceed without a Patient ID or Name. Please include the patient's ID (e.g., 'Subject ID: 10001401') or full name (e.g., 'for patient Casey Gray') in your request."
                         with st.chat_message("assistant", avatar="🚨"):
                             st.error(final_response)
                     
                     else:
-                        # 3c. Run Manager Agent
                         with st.spinner(f"Manager Agent ({MANAGER_MODEL}) is classifying intent..."):
                             intent = manager_agent.execute(user_input)
 
                         identifier_str = patient_id_filter if patient_id_filter else patient_name_filter
                         st.caption(f"🤖 Manager routed to: **{intent}** (Patient: {identifier_str})")
                         
-                        # 3d. Route to Sub-Agent
                         if intent == "Patient History":
                             agent_to_run = patient_history_agent
                         elif intent == "Discharge":
                             agent_to_run = discharge_agent
                         
-                        # 3e. Execute Sub-Agent (Unchanged)
                         if agent_to_run:
                             with st.spinner(f"{agent_to_run.name} ({WORKER_MODEL}) is processing..."):
                                 history_for_agent = st.session_state.messages[-MAX_MESSAGES_TO_SEND:]
@@ -491,10 +481,8 @@ else:
                             with st.chat_message("assistant"):
                                 st.write(final_response)
                     
-                    # 4. Add final ASSISTANT message to UI state
                     st.session_state.messages.append({"role": "assistant", "content": final_response})
                 
-                    # 5. Add final ASSISTANT message to DB
                     try:
                         assistant_tokens = count_tokens([{"content": final_response}])
                         db.add_message(st.session_state.current_session_id, "assistant", final_response, tokens=assistant_tokens)
@@ -520,8 +508,6 @@ else:
                 total_messages = sum(len([m for m in db.get_session_messages(s["session_id"]) if m["role"] != "system"]) for s in sessions)
                 total_tokens_all = sum(s.get('total_tokens', 0) for s in sessions)
             
-            # This estimate needs to be updated to reflect hybrid model costs
-            # For now, we'll leave the gpt-4o-mini estimate
             estimated_cost = (total_tokens_all / 1_000_000) * 0.375 
             
             col1, col2, col3, col4 = st.columns(4)
