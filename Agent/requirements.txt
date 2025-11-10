@@ -1,7 +1,7 @@
 streamlit
 openai
 google-generativeai
-pinecone-client
+pinecone
 langchain-community
 langchain-core
 langchain-text-splitters
