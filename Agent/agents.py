@@ -8,7 +8,7 @@ Defines a HYBRID multi-agent system.
 import os
 import json
 import traceback
-from typing import List, Dict, Optional, Any
+from typing import List, Dict, Optional, Any, Generator
 
 # --- Import both clients ---
 from openai import OpenAI
@@ -69,13 +69,18 @@ TOOL_REGISTRY = {
 # --- Gemini Tool Definition (for Manager Agent) ---
 MANAGER_FUNCTION_DECLARATION = FunctionDeclaration(
     name="route_query",
-    description="Routes the user's query to the correct agent based on its intent.",
+    description="Classifies the user's query and routes it to the correct agent. Use the definitions in the 'intent' parameter to determine the correct route.",
     parameters={
         "type": "object",
         "properties": {
             "intent": {
                 "type": "string",
-                "description": "The classified intent of the user's query.",
+                "description": (
+                    "The classified intent of the user's query. "
+                    "Use 'Patient History' for queries about past medical events, symptoms, diagnoses, family history, social habits, or background summaries. "
+                    "Use 'Discharge' for queries about the current hospital stay, treatments, hospital course, discharge medications, instructions, or diagnosis. "
+                    "Use 'Ambiguous' if the query is unclear, too short, or fits both."
+                ),
                 "enum": ["Patient History", "Discharge", "Ambiguous"]
             }
         },
@@ -109,7 +114,7 @@ class BaseAgent:
         self.last_context: str = "" 
         print(f"Initialized OpenAI Agent {self.name} with model {self.model}.")
 
-    def execute(
+    def _execute_tool_loop(
         self, 
         system_prompt: str, 
         user_message: str, 
@@ -117,8 +122,8 @@ class BaseAgent:
         patient_name: Optional[str],
         chat_history: List[Dict],
         max_iterations: int = 10
-    ) -> str:
-        print(f"\n--- {self.name} EXECUTING ---")
+    ) -> List[Dict]:
+        print(f"\n--- {self.name} EXECUTING TOOL LOOP ---")
         print(f"Query: {user_message}")
         print(f"Patient ID: {patient_id}")
         print(f"Patient Name: {patient_name}")
@@ -135,16 +140,28 @@ class BaseAgent:
                     messages=messages,
                     tools=self.tools if self.tools else None,
                     tool_choice="auto" if self.tools else None,
-                    temperature=0.1
+                    temperature=0.1,
+                    stream=False 
                 )
                 assistant_message = response.choices[0].message
+                
                 if assistant_message.tool_calls:
-                    messages.append(assistant_message)
+                    messages.append(assistant_message.model_dump(exclude_none=True))
                     for tool_call in assistant_message.tool_calls:
+                        
+                        # --- THIS IS THE FIX ---
                         function_name = tool_call.function.name
+                        # --- END OF FIX ---
+                        
                         function_args = json.loads(tool_call.function.arguments)
                         if function_name not in TOOL_REGISTRY:
-                            return f"Error: Unknown tool '{function_name}'"
+                            messages.append({
+                                "role": "tool",
+                                "tool_call_id": tool_call.id,
+                                "name": function_name,
+                                "content": f"Error: Unknown tool '{function_name}'"
+                            })
+                            continue
                         
                         function_args["patient_id"] = patient_id
                         function_args["patient_name"] = patient_name
@@ -153,7 +170,11 @@ class BaseAgent:
                         
                         tool_function = TOOL_REGISTRY[function_name]
                         
-                        tool_result = tool_function(**function_args)
+                        try:
+                            tool_result = tool_function(**function_args)
+                        except Exception as e:
+                            print(f"Error calling tool {function_name}: {e}")
+                            tool_result = f"Error executing tool {function_name}: {e}"
 
                         self.last_context = tool_result
                         messages.append({
@@ -163,14 +184,63 @@ class BaseAgent:
                             "content": tool_result
                         })
                 else:
-                    final_answer = assistant_message.content
-                    print(f"✅ {self.name} Complete.")
-                    return final_answer
-            return f"Agent reached max iterations ({max_iterations})"
+                    print(f"✅ {self.name} Tool Loop Complete.")
+                    if assistant_message.content:
+                        messages.append(assistant_message.model_dump(exclude_none=True))
+                    return messages 
+            
+            print(f"Agent reached max iterations ({max_iterations}).")
+            return messages
+        
         except Exception as e:
-            print(f"Error during {self.name} execution: {e}")
+            print(f"Error during {self.name} tool loop: {e}")
             traceback.print_exc()
-            return f"An error occurred in the {self.name}: {e}. Please check the logs."
+            messages.append({"role": "assistant", "content": f"An error occurred in the {self.name}: {e}."})
+            return messages
+
+    def stream_response(
+        self, 
+        system_prompt: str, 
+        user_message: str, 
+        patient_id: Optional[str],
+        patient_name: Optional[str],
+        chat_history: List[Dict],
+        max_iterations: int = 10
+    ) -> Generator[str, None, None]:
+        
+        messages_with_context = self._execute_tool_loop(
+            system_prompt,
+            user_message,
+            patient_id,
+            patient_name,
+            chat_history,
+            max_iterations
+        )
+        
+        if messages_with_context[-1]["role"] == "assistant" and "An error occurred" in messages_with_context[-1].get("content", ""):
+            yield messages_with_context[-1]["content"]
+            return
+
+        print(f"--- {self.name} STREAMING FINAL ANSWER ---")
+        
+        try:
+            final_stream = self.client.chat.completions.create(
+                model=self.model,
+                messages=messages_with_context,
+                temperature=0.1,
+                stream=True,
+                tools=None,
+                tool_choice=None
+            )
+            
+            for chunk in final_stream:
+                if chunk.choices[0].delta.content:
+                    yield chunk.choices[0].delta.content
+                    
+        except Exception as e:
+            print(f"Error during {self.name} streaming: {e}")
+            traceback.print_exc()
+            yield f"An error occurred while streaming the response: {e}"
 
 
 # --- Specialized Agents ---
@@ -182,20 +252,9 @@ class ManagerAgent:
     """
     def __init__(self, model_name: str):
         self.name = "Manager Agent (Gemini)"
-        self.system_prompt = """
-You are the central manager for a clinical AI assistant. Your job is to classify the user's intent based on their query.
-Analyze the query and determine if it relates to "Patient History" or "Discharge".
-
-- **"Patient History"**: Queries about past medical events, symptoms, diagnoses, family history, social habits, or summaries of the patient's background.
-- **"Discharge"**: Queries about the current hospital stay, treatments given, hospital course, discharge medications, discharge instructions, or discharge diagnosis/condition/disposition.
-- **"Ambiguous"**: Use this if the query is unclear, too short, or could apply to both categories.
-
-You MUST call the `route_query` function with your decision.
-"""
-        # Initialize the Gemini Model
+        
         self.model = genai.GenerativeModel(
             model_name=model_name,
-            system_instruction=self.system_prompt,
             tools=[MANAGER_FUNCTION_DECLARATION], 
             generation_config=GenerationConfig(temperature=0.0),
             safety_settings=SAFETY_SETTINGS
@@ -210,8 +269,7 @@ You MUST call the `route_query` function with your decision.
         print(f"Query: {query}")
         
         try:
-            # Force the model to call our routing function
-            tool_config = {"function_calling_config": {"mode": "FUNCTION", "allowed_function_names": ["route_query"]}}
+            tool_config = {"function_calling_config": {"mode": 'any', "allowed_function_names": ["route_query"]}}
             
             response = self.model.generate_content(
                 query,
@@ -234,7 +292,7 @@ You MUST call the `route_query` function with your decision.
         except Exception as e:
             print(f"Error during {self.name} execution: {e}")
             traceback.print_exc()
-            return "Ambiguous" # Default to ambiguous on error
+            return "Ambiguous" 
 
 
 class PatientHistoryAgent(BaseAgent):
@@ -268,9 +326,9 @@ RULES:
             tools=WORKER_TOOL_DECLARATION
         )
 
-    def run(self, query: str, patient_id: Optional[str], patient_name: Optional[str], chat_history: List[Dict]) -> str:
-        """Runs the agent's execution loop."""
-        return self.execute(
+    def run(self, query: str, patient_id: Optional[str], patient_name: Optional[str], chat_history: List[Dict]):
+        """Runs the agent's execution loop and returns a generator."""
+        return self.stream_response(
             system_prompt=self.SYSTEM_PROMPT,
             user_message=query,
             patient_id=patient_id,
@@ -312,9 +370,9 @@ RULES:
             tools=WORKER_TOOL_DECLARATION
         )
 
-    def run(self, query: str, patient_id: Optional[str], patient_name: Optional[str], chat_history: List[Dict]) -> str:
-        """Runs the agent's execution loop."""
-        return self.execute(
+    def run(self, query: str, patient_id: Optional[str], patient_name: Optional[str], chat_history: List[Dict]):
+        """Runs the agent's execution loop and returns a generator."""
+        return self.stream_response(
             system_prompt=self.SYSTEM_PROMPT,
             user_message=query,
             patient_id=patient_id,

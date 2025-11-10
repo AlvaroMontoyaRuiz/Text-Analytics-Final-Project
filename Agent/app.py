@@ -1,7 +1,6 @@
 import streamlit as st
 from openai import OpenAI, APIError 
 import os
-# from dotenv import load_dotenv # --- REMOVED ---
 import uuid
 from datetime import datetime
 import json
@@ -9,21 +8,13 @@ import re
 import traceback 
 from typing import List, Dict, Optional, Tuple 
 
-# --- ADD THIS LINE ---
 import google.generativeai as genai 
 
-# --- NEW: Import OpenAI-based agent classes ---
 from agents import ManagerAgent, PatientHistoryAgent, DischargeAgent
-
-# Import SQLite/Auth files
 from database import ChatDatabase
 from auth import AuthManager
-
-# Import RAG utilities
 from utils.pinecone_database import perform_hybrid_search, ConnectionError as PineconeConnectionError
 from utils.rag import count_tokens
-
-# Import Security Guardrails
 from utils.security import validate_input, apply_output_guardrails
 
 # Configuration Constants
@@ -31,7 +22,8 @@ APP_TITLE = "Smart Chat Pro - Clinical Assistant"
 APP_ICON = "🤖"
 OPENAI_MODEL = "gpt-4o-mini" 
 WORKER_MODEL = "gpt-4o-mini" # The OpenAI model for workers
-MANAGER_MODEL = "gemini-1.5-pro-latest" 
+# Use your working model name
+MANAGER_MODEL = "gemini-2.5-flash" 
 
 MAX_CONTEXT_TOKENS = 120000 
 MAX_MESSAGES_TO_SEND = 15 
@@ -40,10 +32,7 @@ SESSION_DIR = "session"
 DB_PATH = os.path.join(SESSION_DIR, DB_FILENAME) 
 
 # --- Initialize Clients (Both OpenAI and Gemini using st.secrets) ---
-
-# --- MODIFIED: Initialize Google Gemini Client ---
 try:
-    # Use st.secrets.get()
     google_api_key = st.secrets.get('GEMINI_API_KEY')
     if not google_api_key:
         st.error("GEMINI_API_KEY not found. Please add it to your Streamlit Cloud secrets.")
@@ -53,9 +42,7 @@ except Exception as e:
     st.error(f"Error initializing Google Gemini client: {e}")
     st.stop()
 
-# --- MODIFIED: Initialize OpenAI Client ---
 try:
-    # Use st.secrets.get()
     openai_api_key = st.secrets.get('OPENAI_API_KEY')
     if not openai_api_key:
         st.error("OpenAI API key not found. Please add it to your Streamlit Cloud secrets.")
@@ -94,6 +81,7 @@ try:
 
 except Exception as e:
     st.error(f"Fatal Error: Failed to initialize agents: {e}. Check 'agents.py' and API keys.")
+    traceback.print_exc() # Print full error
     st.stop()
 
 
@@ -273,10 +261,10 @@ else:
                             is_current = session_id == st.session_state.current_session_id
                             button_type = "primary" if is_current else "secondary"
                             if st.button(session["session_name"],
-                                        key=f"session_{session_id}",
-                                        use_container_width=True,
-                                        type=button_type,
-                                        help=f"Updated: {session['updated_at']}"):
+                                         key=f"session_{session_id}",
+                                         use_container_width=True,
+                                         type=button_type,
+                                         help=f"Updated: {session['updated_at']}"):
                                 try:
                                     st.session_state.current_session_id = session_id
                                     db_messages = db.get_session_messages(session_id)
@@ -289,11 +277,11 @@ else:
                             try:
                                 export_json = export_session_json(session_id)
                                 st.download_button("📥",
-                                                data=export_json,
-                                                file_name=f"{session.get('session_name', 'chat_export')}_{session_id[:8]}.json",
-                                                mime="application/json",
-                                                key=f"export_{session_id}",
-                                                help="Export chat as JSON")
+                                                 data=export_json,
+                                                 file_name=f"{session.get('session_name', 'chat_export')}_{session_id[:8]}.json",
+                                                 mime="application/json",
+                                                 key=f"export_{session_id}",
+                                                 help="Export chat as JSON")
                             except Exception as e:
                                 st.error(f"Export failed: {e}")
                         with col3:
@@ -366,10 +354,13 @@ else:
             user_input_to_regenerate = None
             if len(st.session_state.messages) >= 2:
                 try:
+                    # Remove assistant message
                     db.remove_last_message(st.session_state.current_session_id) 
                     st.session_state.messages.pop()
+                    # Remove user message
                     last_user_msg_details = db.remove_last_message(st.session_state.current_session_id)
                     st.session_state.messages.pop()
+                    
                     if last_user_msg_details and last_user_msg_details.get("role") == "user":
                         user_input_to_regenerate = last_user_msg_details.get("content")
                     else:
@@ -378,6 +369,7 @@ else:
                     st.error(f"Error during regeneration setup: {e}")
             else:
                 st.error("Not enough messages in history to regenerate.")
+            
             if user_input_to_regenerate:
                 print("Triggering regeneration for:", user_input_to_regenerate)
                 user_input = user_input_to_regenerate
@@ -394,7 +386,7 @@ else:
                     st.session_state.regenerate_flag = True
                     st.rerun() 
 
-        # --- MODIFIED Main Processing Logic (Multi-Agent) ---
+        # --- **** MODIFIED Main Processing Logic (Multi-Agent & Streaming) **** ---
         if user_input:
             is_valid, error_message = validate_input(user_input)
             if not is_valid:
@@ -423,9 +415,9 @@ else:
                     id_match = re.search(r"MRN\s*(\d+)|Subject ID:\s*(\d+)", user_input, re.IGNORECASE)
                     if id_match:
                         if id_match.group(1): 
-                             patient_id_filter = f"MRN {id_match.group(1).strip()}"
+                            patient_id_filter = f"MRN {id_match.group(1).strip()}"
                         else: 
-                             patient_id_filter = id_match.group(2).strip()
+                            patient_id_filter = id_match.group(2).strip()
                     else:
                         name_match = re.search(r"for\s+([A-Za-z]+\s+[A-Za-z]+)|patient\s+([A-Za-z]+\s+[A-Za-z]+)|(Casey Gray)", user_input, re.IGNORECASE)
                         if name_match:
@@ -450,23 +442,35 @@ else:
                         elif intent == "Discharge":
                             agent_to_run = discharge_agent
                         
+                        # --- MODIFICATION: This block is new ---
                         if agent_to_run:
-                            with st.spinner(f"{agent_to_run.name} ({WORKER_MODEL}) is processing..."):
-                                history_for_agent = st.session_state.messages[-MAX_MESSAGES_TO_SEND:]
+                            with st.chat_message("assistant"):
+                                # 1. Create a placeholder *inside* the chat message
+                                placeholder = st.empty()
                                 
-                                response_text = agent_to_run.run( 
+                                # 2. Get the generator
+                                history_for_agent = st.session_state.messages[-MAX_MESSAGES_TO_SEND:]
+                                response_generator = agent_to_run.run( 
                                     query=user_input,
                                     patient_id=patient_id_filter,
                                     patient_name=patient_name_filter,
                                     chat_history=history_for_agent
                                 )
                                 
+                                # 3. Stream to the placeholder
+                                response_text = ""
+                                for chunk in response_generator:
+                                    response_text += chunk
+                                    placeholder.write(response_text + "▌") # Add a "cursor"
+                                
+                                # 4. Now that stream is done, apply guardrails
+                                final_response = apply_output_guardrails(response_text)
+                                
+                                # 5. Write the final, guarded response to the placeholder
+                                placeholder.write(final_response)
+
+                                # 6. Handle the context expander
                                 LAST_RETRIEVED_CONTEXT["content"] = agent_to_run.last_context
-                            
-                            final_response = apply_output_guardrails(response_text)
-                            
-                            with st.chat_message("assistant"):
-                                st.write(final_response)
                                 if LAST_RETRIEVED_CONTEXT["content"]:
                                     with st.expander("View Retrieved Context"):
                                         st.text(LAST_RETRIEVED_CONTEXT["content"])
@@ -480,6 +484,7 @@ else:
                             final_response = "I am sorry, but I can only assist with tasks related to 'Patient History' or 'Discharge Summaries'."
                             with st.chat_message("assistant"):
                                 st.write(final_response)
+                        # --- END MODIFICATION ---
                     
                     st.session_state.messages.append({"role": "assistant", "content": final_response})
                 
@@ -508,6 +513,9 @@ else:
                 total_messages = sum(len([m for m in db.get_session_messages(s["session_id"]) if m["role"] != "system"]) for s in sessions)
                 total_tokens_all = sum(s.get('total_tokens', 0) for s in sessions)
             
+            # This is a placeholder cost. 
+            # gpt-4o-mini: $0.15 / 1M input, $0.60 / 1M output
+            # Let's average to $0.375
             estimated_cost = (total_tokens_all / 1_000_000) * 0.375 
             
             col1, col2, col3, col4 = st.columns(4)
