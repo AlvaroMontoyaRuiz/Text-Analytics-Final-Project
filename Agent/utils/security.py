@@ -2,7 +2,6 @@ import re
 from typing import Tuple, Optional
 
 # Regex to detect common prompt injection attempts
-# This looks for phrases like "ignore instructions", "disregard rules", etc.
 PROMPT_INJECTION_PATTERN = re.compile(
     r"ignore.*(instructions|rules|prompt)|"
     r"disregard.*(instructions|rules|prompt)|"
@@ -13,8 +12,7 @@ PROMPT_INJECTION_PATTERN = re.compile(
     re.IGNORECASE | re.DOTALL
 )
 
-# Keywords indicating a user is asking for medical advice,
-# which the bot is not qualified to give.
+# Keywords indicating a user is asking for medical advice
 MEDICAL_ADVICE_KEYWORDS = [
     "prescribe", "diagnose", "diagnosis", "treat", "treatment",
     "cure", "prognosis", "what should i take", "is this normal",
@@ -57,9 +55,6 @@ def validate_input(user_input: str) -> Tuple[bool, Optional[str]]:
 def apply_output_guardrails(response_text: str) -> str:
     """
     Applies security guardrails to the LLM's final output.
-    
-    - Appends a mandatory medical disclaimer.
-    - (Future extension: Could also check for PII or hallucinated facts)
     """
     
     # In a clinical setting, EVERY response should have a disclaimer.
