@@ -1,14 +1,11 @@
 streamlit
 openai
-pinecone
-python-dotenv
-tiktoken
-bcrypt
+google-generativeai
+pinecone-client
+langchain-community
+langchain-core
+langchain-text-splitters
 unstructured
 python-docx
-langchain
-pip install -qU langchain-text-splitters
-python-magic-bin
-langchain-community 
-langchain-core
-google-generativeai
+tiktoken
+python-dotenv
