@@ -1,22 +1,26 @@
 #!/usr/bin/env python3
-"""
-agents.py
-Defines the multi-agent system (Manager, PatientHistory, Discharge).
-All worker agents use a single RAG tool.
-"""
+
 import os
 import json
 import traceback
 from typing import List, Dict, Optional, Any
-from openai import OpenAI
 
-# Import the *one* tool function from tools.py
+# --- MODIFIED: Import both clients ---
+from openai import OpenAI
+import google.generativeai as genai
+# --- MODIFIED: Tool is no longer imported ---
+from google.generativeai.types import (
+    FunctionDeclaration, 
+    GenerationConfig,
+    HarmCategory, 
+    HarmBlockThreshold
+)
+
+# Import the tool functions from tools.py
 import tools
 
-# --- OpenAI Tool Definitions ---
-
-# --- MODIFIED: A single tool declaration for all workers ---
-# Now includes date fields
+# --- OpenAI Tool Definitions (for Worker Agents) ---
+# (These are unchanged)
 WORKER_TOOL_DECLARATION = [
     {
         "type": "function",
@@ -53,38 +57,45 @@ WORKER_TOOL_DECLARATION = [
     }
 ]
 
-# Tool definition for the Manager Agent (Unchanged)
-MANAGER_TOOL_DECLARATION = [
-    {
-        "type": "function",
-        "function": {
-            "name": "route_query",
-            "description": "Routes the user's query to the correct agent based on its intent.",
-            "parameters": {
-                "type": "object",
-                "properties": {
-                    "intent": {
-                        "type": "string",
-                        "description": "The classified intent of the user's query.",
-                        "enum": ["Patient History", "Discharge", "Ambiguous"]
-                    }
-                },
-                "required": ["intent"]
-            },
-        }
-    }
-]
-
-# Map the single tool name to the function
+# Map tool names to their actual Python functions (for worker agents)
 TOOL_REGISTRY = {
     "retrieve_patient_information": tools.retrieve_patient_information,
 }
 
 
+# --- NEW: Gemini Tool Definition (for Manager Agent) ---
+MANAGER_FUNCTION_DECLARATION = FunctionDeclaration(
+    name="route_query",
+    description="Routes the user's query to the correct agent based on its intent.",
+    parameters={
+        "type": "object",
+        "properties": {
+            "intent": {
+                "type": "string",
+                "description": "The classified intent of the user's query.",
+                "enum": ["Patient History", "Discharge", "Ambiguous"]
+            }
+        },
+        "required": ["intent"]
+    },
+)
+
+# --- REMOVED: MANAGER_TOOL = genai.Tool(...) ---
+# This was the line causing the error.
+
+# Gemini safety settings
+SAFETY_SETTINGS = {
+    HarmCategory.HARM_CATEGORY_HARASSMENT: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+    HarmCategory.HARM_CATEGORY_HATE_SPEECH: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+    HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+    HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT: HarmBlockThreshold.BLOCK_MEDIUM_AND_ABOVE,
+}
+
+
 # --- Base Agent Class (OpenAI) ---
+# (This class is unchanged)
 class BaseAgent:
     """Base class for OpenAI agents with function calling"""
-
     def __init__(
         self,
         client: OpenAI,
@@ -97,7 +108,7 @@ class BaseAgent:
         self.name = name
         self.tools = tools
         self.last_context: str = "" 
-        print(f"Initialized {self.name} with model {self.model}.")
+        print(f"Initialized OpenAI Agent {self.name} with model {self.model}.")
 
     def execute(
         self, 
@@ -108,10 +119,6 @@ class BaseAgent:
         chat_history: List[Dict],
         max_iterations: int = 10
     ) -> str:
-        """
-        Execute the agent with a function calling loop.
-        Injects patient_id or patient_name into the tool call.
-        """
         print(f"\n--- {self.name} EXECUTING ---")
         print(f"Query: {user_message}")
         print(f"Patient ID: {patient_id}")
@@ -137,13 +144,9 @@ class BaseAgent:
                     for tool_call in assistant_message.tool_calls:
                         function_name = tool_call.function.name
                         function_args = json.loads(tool_call.function.arguments)
-                        
                         if function_name not in TOOL_REGISTRY:
                             return f"Error: Unknown tool '{function_name}'"
-
-                        # --- MODIFIED: Securely merge identifiers ---
-                        # Override/add the verified identifiers from the app.
-                        # This prevents the LLM from hallucinating an ID.
+                        
                         function_args["patient_id"] = patient_id
                         function_args["patient_name"] = patient_name
                         
@@ -151,9 +154,6 @@ class BaseAgent:
                         
                         tool_function = TOOL_REGISTRY[function_name]
                         
-                        # --- MODIFIED: Use **kwargs to pass all args ---
-                        # This now correctly passes query, patient_id, patient_name,
-                        # and any dates the LLM extracted.
                         tool_result = tool_function(**function_args)
 
                         self.last_context = tool_result
@@ -176,15 +176,14 @@ class BaseAgent:
 
 # --- Specialized Agents ---
 
-# ManagerAgent is unchanged
+# --- MODIFIED: ManagerAgent (now uses Gemini) ---
 class ManagerAgent:
     """
     Classifies user intent by FORCING a function call.
+    This agent uses the Google Gemini Pro API.
     """
-    def __init__(self, client: OpenAI, model_name: str):
-        self.name = "Manager Agent"
-        self.client = client
-        self.model = model_name
+    def __init__(self, model_name: str):
+        self.name = "Manager Agent (Gemini)"
         self.system_prompt = """
 You are the central manager for a clinical AI assistant. Your job is to classify the user's intent based on their query.
 Analyze the query and determine if it relates to "Patient History" or "Discharge".
@@ -195,7 +194,16 @@ Analyze the query and determine if it relates to "Patient History" or "Discharge
 
 You MUST call the `route_query` function with your decision.
 """
-        print(f"Initialized {self.name} with model {self.model}.")
+        # Initialize the Gemini Model
+        self.model = genai.GenerativeModel(
+            model_name=model_name,
+            system_instruction=self.system_prompt,
+            # --- MODIFIED: Pass the FunctionDeclaration directly ---
+            tools=[MANAGER_FUNCTION_DECLARATION], 
+            generation_config=GenerationConfig(temperature=0.0),
+            safety_settings=SAFETY_SETTINGS
+        )
+        print(f"Initialized {self.name} with model {model_name}.")
 
     def execute(self, query: str) -> str:
         """
@@ -203,45 +211,45 @@ You MUST call the `route_query` function with your decision.
         """
         print(f"\n--- {self.name} EXECUTING (Forced Tool Call) ---")
         print(f"Query: {query}")
-        messages = [
-            {"role": "system", "content": self.system_prompt},
-            {"role": "user", "content": query}
-        ]
+        
         try:
-            response = self.client.chat.completions.create(
-                model=self.model,
-                messages=messages,
-                tools=MANAGER_TOOL_DECLARATION,
-                tool_choice={"type": "function", "function": {"name": "route_query"}},
-                temperature=0.0
+            # Gemini's equivalent of "tool_choice"
+            tool_config = {"function_calling_config": {"mode": "ANY", "allowed_function_names": ["route_query"]}}
+            
+            response = self.model.generate_content(
+                query,
+                tool_config=tool_config
             )
-            tool_call = response.choices[0].message.tool_calls[0]
-            if tool_call.function.name == "route_query":
-                arguments = json.loads(tool_call.function.arguments)
-                classification = arguments.get("intent", "Ambiguous")
+            
+            fc = response.candidates[0].content.parts[0].function_call
+            if fc.name == "route_query":
+                classification = fc.args["intent"]
                 print(f"Classification: {classification}")
                 return classification
             else:
                 print("Error: Manager agent did not call the expected 'route_query' function.")
                 return "Ambiguous"
+
         except Exception as e:
             print(f"Error during {self.name} execution: {e}")
             traceback.print_exc()
-            return "Ambiguous"
+            return "Ambiguous" # Default to ambiguous on error
 
+
+# --- Worker Agents (Unchanged, still use OpenAI BaseAgent) ---
 
 class PatientHistoryAgent(BaseAgent):
     """
     Agent specialized in summarizing and answering questions about patient history.
+    (Uses OpenAI BaseAgent)
     """
     def __init__(self, client: OpenAI, model_name: str):
-        # --- MODIFIED: Prompt now mentions dates ---
         self.SYSTEM_PROMPT = """
 You are a specialized AI assistant for summarizing patient medical histories.
 Your task is to **precisely answer the user's query** about a patient based *only* on the context provided by the `retrieve_patient_information` tool.
 
 - If the user asks for a specific section (like **'HPI'** or **'social history'**), provide *only* that section.
-- If the user asks for a **full history summary**, you can provide the four key sections:
+- If the user asks for a **full history summary**, you can provide these key sections:
     1.  **History of Present Illness (HPI)**
     2.  **Past Medical History**
     3.  **Family History**
@@ -274,9 +282,9 @@ RULES:
 class DischargeAgent(BaseAgent):
     """
     Agent specialized in summarizing hospital course and drafting discharge plans.
+    (Uses OpenAI BaseAgent)
     """
     def __init__(self, client: OpenAI, model_name: str):
-        # --- MODIFIED: Prompt now mentions dates and all discharge sections ---
         self.SYSTEM_PROMPT = """
 You are a specialized AI assistant for summarizing hospital visits and drafting discharge information.
 Your task is to **precisely answer the user's query** based *only* on the context provided by the `retrieve_patient_information` tool.
