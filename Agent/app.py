@@ -148,7 +148,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- ★★★ FINAL CORRECTED HYBRID CSS BLOCK ★★★ ---
+# --- ★★★ FINAL CORRECTED HYBRID CSS BLOCK v2 ★★★ ---
 # --- MODIFICATION: Custom Professional CSS (matches target image) ---
 st.markdown("""
 <style>
@@ -170,9 +170,10 @@ st.markdown("""
     [data-testid="stSidebar"] h4 {
         color: #f9fafb;
     }
+    /* --- MODIFIED: Forced white color for text/icons --- */
     [data-testid="stSidebar"] .stButton>button {
         background-color: #374151;
-        color: #f9fafb;
+        color: #f9fafb !important; /* <--- FORCED white text/icons */
         border: 1px solid #4b5563;
     }
     [data-testid="stSidebar"] .stButton>button:hover {
@@ -182,7 +183,7 @@ st.markdown("""
     /* "New Chat" button */
     [data-testid="stSidebar"] .stButton>button[kind="primary"] {
         background-color: #2563eb; /* Blue */
-        color: white;
+        color: white !important; /* <--- FORCED white text */
         border: 0;
     }
     [data-testid="stSidebar"] .stButton>button[kind="primary"]:hover {
@@ -191,13 +192,17 @@ st.markdown("""
     /* Active chat button (like the red one in the image) */
     [data-testid="stSidebar"] .stButton>button[type="primary"]:not([kind="primary"]) {
         background-color: #be123c; /* Red */
-        color: white;
+        color: white !important; /* <--- FORCED white text */
         border: 0;
     }
     [data-testid="stSidebar"] .stTextInput input {
         background-color: #1f2937;
         color: #f9fafb;
         border: 1px solid #4b5563;
+    }
+    /* --- NEW: Added Sidebar Placeholder Color --- */
+    [data-testid="stSidebar"] .stTextInput input::placeholder {
+        color: #9ca3af;
     }
     [data-testid="stSidebar"] .stInfo { /* "Multi-Agent RAG" box */
         background-color: #1f2937;
@@ -317,6 +322,10 @@ st.markdown("""
         background-color: #374151;
         color: white;
         border: 1px solid #4b5563;
+    }
+    /* --- NEW: Added Chat Input Placeholder Color --- */
+    [data-testid="stChatInput"] textarea::placeholder {
+        color: #9ca3af;
     }
     [data-testid="stChatInput"] button { /* Send button */
         color: #9ca3af;
