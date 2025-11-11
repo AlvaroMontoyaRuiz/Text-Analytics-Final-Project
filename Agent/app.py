@@ -17,13 +17,14 @@ from utils.pinecone_database import perform_hybrid_search, ConnectionError as Pi
 from utils.rag import count_tokens
 from utils.security import validate_input, apply_output_guardrails
 
-# Configuration Constants
-APP_TITLE = "Smart Chat Pro - Clinical Assistant"
-APP_ICON = "🤖"
+# --- MODIFICATION: Updated App Title & Icon ---
+APP_TITLE = "MedSynth: Intelligent Clinical Summarization"
+APP_ICON = "🧠"
+# ----------------------------------------------
+
 OPENAI_MODEL = "gpt-4o-mini" 
 WORKER_MODEL = "gpt-4o-mini" # The OpenAI model for workers
-# Use your working model name
-MANAGER_MODEL = "gemini-2.5-flash" 
+MANAGER_MODEL = "gemini-2.5-flash" # Using your working model
 
 MAX_CONTEXT_TOKENS = 120000 
 MAX_MESSAGES_TO_SEND = 15 
@@ -147,10 +148,81 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- Custom CSS (Unchanged) ---
+# --- MODIFICATION: Custom Professional CSS ---
 st.markdown("""
 <style>
-    /* ... (your CSS styles) ... */
+    /* Base font */
+    html, body, [class*="st-"] {
+        font-family: 'Lato', sans-serif;
+    }
+
+    /* Main background */
+    .stApp {
+        background-color: #f0f2f6; /* Light gray background */
+    }
+
+    /* Sidebar style */
+    [data-testid="stSidebar"] {
+        background-color: #ffffff;
+        border-right: 1px solid #e0e0e0;
+    }
+
+    /* Main chat area */
+    [data-testid="stChatContainer"] {
+        background-color: #ffffff;
+    }
+
+    /* Chat Bubbles */
+    [data-testid="chat-bubble"] {
+        border-radius: 12px;
+        padding: 16px;
+        font-size: 16px;
+    }
+
+    /* User chat bubble */
+    [data-testid="chat-bubble"][data-user-bubble="true"] {
+        background-color: #0072C6; /* Professional Blue */
+        color: white;
+    }
+    
+    /* Assistant chat bubble */
+    [data-testid="chat-bubble"]:not([data-user-bubble="true"]) {
+        background-color: #e9ecef; /* Light gray */
+        color: #333;
+    }
+
+    /* Buttons */
+    .stButton>button {
+        border-radius: 8px;
+        border: 1px solid #0072C6;
+        color: #0072C6;
+    }
+    .stButton>button:hover {
+        border-color: #00569a;
+        color: #00569a;
+    }
+    /* Primary button */
+    .stButton>button[kind="primary"] {
+        background-color: #0072C6;
+        color: white;
+        border: 0;
+    }
+    .stButton>button[kind="primary"]:hover {
+        background-color: #00569a;
+    }
+
+    /* Title */
+    h1 {
+        color: #0072C6;
+        font-family: 'Poppins', sans-serif;
+        font-weight: 600;
+    }
+    
+    h3 {
+        font-family: 'Poppins', sans-serif;
+        font-weight: 600;
+    }
+
 </style>
 """, unsafe_allow_html=True)
 
@@ -170,12 +242,14 @@ for key, default_value in default_states.items():
     if key not in st.session_state:
         st.session_state[key] = default_value
 
-# --- Login/Register Page (Unchanged) ---
+# --- Login/Register Page ---
 if not st.session_state.authenticated:
     col1, col2, col3 = st.columns([1, 1.5, 1]) 
     with col2:
+        # --- MODIFICATION: Updated Title ---
         st.title(f"{APP_ICON} {APP_TITLE}")
         st.markdown("### Your AI-Powered Clinical Document Assistant")
+        # ----------------------------------
         st.markdown("---")
         tab1, tab2 = st.tabs(["Login", "Register"])
         with tab1:
@@ -298,7 +372,7 @@ else:
         else:
             st.caption("No sessions found." if search_query else "No chat history yet.")
 
-    # --- Main Chat Area (Unchanged) ---
+    # --- Main Chat Area ---
     if st.session_state.current_session_id:
         current_session_name = "Chat" 
         current_total_tokens = 0
@@ -310,13 +384,12 @@ else:
                 current_total_tokens = current_session['total_tokens']
         except Exception as e:
             st.error(f"Could not load session details: {e}")
-        col1, col_spacer, col2, col3 = st.columns([3, 1, 1, 1]) 
+        
+        # --- MODIFICATION: Removed old metrics ---
+        col1, col_spacer, col2 = st.columns([4, 1, 1]) 
         with col1:
             st.markdown(f"### {current_session_name}")
         with col2:
-            msg_count = len(st.session_state.messages) 
-            st.metric("Messages", msg_count)
-        with col3:
             with st.popover("⚙️ Options", use_container_width=True):
                 st.markdown("##### Session Management") 
                 new_name = st.text_input("Rename Session:", value=current_session_name, key="popover_rename_input")
@@ -340,15 +413,47 @@ else:
                     st.download_button("📥 Export Chat", data=export_json_data, file_name=f"{current_session_name}_{st.session_state.current_session_id[:8]}.json", mime="application/json", use_container_width=True)
                 except Exception as e:
                     st.error("Export failed.")
+        
+        # --- MODIFICATION: Added Instruction Header ---
+        with st.container(border=True):
+            st.markdown("#### How to Use MedSynth")
+            col1, col2 = st.columns(2)
+            with col1:
+                st.markdown("**Available Patients (Demo):**")
+                st.markdown(
+                    """
+                    - `Casey Gray` (or `Subject ID: 10001401`)
+                    - `Morgan Foster` (or `Subject ID: 10016742`)
+                    - `Peyton Brooks` (or `Subject ID: 10022373`)
+                    - `Riley Miller` (or `Subject ID: 10001884`)
+                    - `Sam Carter` (or `Subject ID: 10021348`)
+                    """
+                )
+            with col2:
+                st.markdown("**What you can ask:**")
+                st.markdown(
+                    """
+                    - **Patient History:** "What is the HPI for patient Casey Gray?"
+                    - **Discharge Info:** "Get the discharge medications for Morgan Foster."
+                    - **Specifics:** "Brief hospital course for Subject ID: 10022373"
+                    """
+                )
+            st.warning("**Limitation:** MedSynth is a summarization tool, not a diagnostic one. It cannot provide medical advice or diagnoses.", icon="⚠️")
+        
         st.divider()
+        # --- END MODIFICATION ---
+
+
         current_display_tokens = count_tokens(st.session_state.messages)
         if current_display_tokens > MAX_CONTEXT_TOKENS * 0.9: 
             st.warning(f"Chat history is long ({current_display_tokens:,} tokens). Older messages might be excluded from context sent to the AI (limit: ~{MAX_MESSAGES_TO_SEND} turns).")
 
+        # This is the main chat history display
         for msg in st.session_state.messages:
             with st.chat_message(msg["role"]):
                 st.write(msg["content"]) 
 
+        # This is the regeneration logic
         if st.session_state.regenerate_flag:
             st.session_state.regenerate_flag = False 
             user_input_to_regenerate = None
@@ -377,6 +482,7 @@ else:
             else:
                 user_input = None 
         else:
+            # This is the chat input box at the bottom
             col_input, col_regenerate = st.columns([5, 1]) 
             with col_input:
                 user_input = st.chat_input("Ask about patient notes (e.g., 'HPI for Casey Gray')...") 
@@ -386,7 +492,7 @@ else:
                     st.session_state.regenerate_flag = True
                     st.rerun() 
 
-        # --- **** MODIFIED Main Processing Logic (Multi-Agent & Streaming) **** ---
+        # --- **** Main Processing Logic (with Streaming and Regex fix) **** ---
         if user_input:
             is_valid, error_message = validate_input(user_input)
             if not is_valid:
@@ -419,11 +525,15 @@ else:
                         else: 
                             patient_id_filter = id_match.group(2).strip()
                     else:
-                        name_match = re.search(r"for\s+([A-Za-z]+\s+[A-Za-z]+)|patient\s+([A-Za-z]+\s+[A-Za-z]+)|(Casey Gray)", user_input, re.IGNORECASE)
+                        # --- THIS IS THE CORRECTED REGEX ---
+                        name_match = re.search(
+                            r"(?:for|patient)\s+(?:the\s+)?([A-Za-z]+\s+[A-Za-z]+(?:\s+[A-Za-z]+)?)", 
+                            user_input, 
+                            re.IGNORECASE
+                        )
                         if name_match:
-                            patient_name_filter = name_match.group(1) or name_match.group(2) or name_match.group(3)
-                            patient_name_filter = patient_name_filter.strip()
-
+                            patient_name_filter = name_match.group(1).strip()
+                        # --- END OF REGEX CORRECTION ---
                     
                     if not patient_id_filter and not patient_name_filter:
                         final_response = "I cannot proceed without a Patient ID or Name. Please include the patient's ID (e.g., 'Subject ID: 10001401') or full name (e.g., 'for patient Casey Gray') in your request."
@@ -442,13 +552,9 @@ else:
                         elif intent == "Discharge":
                             agent_to_run = discharge_agent
                         
-                        # --- MODIFICATION: This block is new ---
                         if agent_to_run:
                             with st.chat_message("assistant"):
-                                # 1. Create a placeholder *inside* the chat message
                                 placeholder = st.empty()
-                                
-                                # 2. Get the generator
                                 history_for_agent = st.session_state.messages[-MAX_MESSAGES_TO_SEND:]
                                 response_generator = agent_to_run.run( 
                                     query=user_input,
@@ -457,19 +563,14 @@ else:
                                     chat_history=history_for_agent
                                 )
                                 
-                                # 3. Stream to the placeholder
                                 response_text = ""
                                 for chunk in response_generator:
                                     response_text += chunk
-                                    placeholder.write(response_text + "▌") # Add a "cursor"
+                                    placeholder.write(response_text + "▌") 
                                 
-                                # 4. Now that stream is done, apply guardrails
                                 final_response = apply_output_guardrails(response_text)
-                                
-                                # 5. Write the final, guarded response to the placeholder
                                 placeholder.write(final_response)
 
-                                # 6. Handle the context expander
                                 LAST_RETRIEVED_CONTEXT["content"] = agent_to_run.last_context
                                 if LAST_RETRIEVED_CONTEXT["content"]:
                                     with st.expander("View Retrieved Context"):
@@ -484,7 +585,6 @@ else:
                             final_response = "I am sorry, but I can only assist with tasks related to 'Patient History' or 'Discharge Summaries'."
                             with st.chat_message("assistant"):
                                 st.write(final_response)
-                        # --- END MODIFICATION ---
                     
                     st.session_state.messages.append({"role": "assistant", "content": final_response})
                 
@@ -500,7 +600,9 @@ else:
 
     # --- Dashboard View (Unchanged) ---
     else:
+        # --- MODIFICATION: Updated Title ---
         st.title(f"{APP_ICON} Welcome to {APP_TITLE}")
+        # ----------------------------------
         st.markdown("Select a chat from the sidebar or start a new one.")
         st.divider()
         st.subheader("📊 Session Dashboard")
@@ -513,9 +615,6 @@ else:
                 total_messages = sum(len([m for m in db.get_session_messages(s["session_id"]) if m["role"] != "system"]) for s in sessions)
                 total_tokens_all = sum(s.get('total_tokens', 0) for s in sessions)
             
-            # This is a placeholder cost. 
-            # gpt-4o-mini: $0.15 / 1M input, $0.60 / 1M output
-            # Let's average to $0.375
             estimated_cost = (total_tokens_all / 1_000_000) * 0.375 
             
             col1, col2, col3, col4 = st.columns(4)
