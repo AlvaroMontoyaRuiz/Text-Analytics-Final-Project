@@ -10,13 +10,13 @@ MedSynth: Intelligent Clinical Summarization
 
 ### Log-in Page
 
-[!Log-in page](https://raw.githubusercontent.com/AlvaroMontoyaRuiz/Text-Analytics-Final-Project/refs/heads/main/miscellaneous/Log-in%20page%20UI.png)
+![Log-in page](https://raw.githubusercontent.com/AlvaroMontoyaRuiz/Text-Analytics-Final-Project/refs/heads/main/miscellaneous/Log-in%20page%20UI.png)
 
 ### Chat Page
 
-[!Chat page part 1](https://raw.githubusercontent.com/AlvaroMontoyaRuiz/Text-Analytics-Final-Project/refs/heads/main/miscellaneous/Chat%20page%20pt1.png)
+![Chat page part 1](https://raw.githubusercontent.com/AlvaroMontoyaRuiz/Text-Analytics-Final-Project/refs/heads/main/miscellaneous/Chat%20page%20pt1.png)
 
-[!Chat page part 2](https://raw.githubusercontent.com/AlvaroMontoyaRuiz/Text-Analytics-Final-Project/refs/heads/main/miscellaneous/Chat%20page%20pt2.png)
+![Chat page part 2](https://raw.githubusercontent.com/AlvaroMontoyaRuiz/Text-Analytics-Final-Project/refs/heads/main/miscellaneous/Chat%20page%20pt2.png)
 
 ## Setup Instructions
 
