@@ -148,7 +148,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- ★★★ FINAL CORRECTED HYBRID CSS BLOCK v2 ★★★ ---
+# --- ★★★ FINAL CORRECTED HYBRID CSS BLOCK v3 (Light Input) ★★★ ---
 # --- MODIFICATION: Custom Professional CSS (matches target image) ---
 st.markdown("""
 <style>
@@ -313,32 +313,30 @@ st.markdown("""
         color: #ecfdf5; 
     }
     
-    /* --- Dark Chat Input Bar --- */
+    /* --- ★★★ NEW: Light Chat Input Bar ★★★ --- */
     [data-testid="stChatInput"] {
-        background-color: #1f2937;
-        border-top: 1px solid #374151;
+        background-color: #ffffff;
+        border-top: 1px solid #e0e0e0;
     }
     [data-testid="stChatInput"] textarea {
-        background-color: #374151;
-        color: white;
-        border: 1px solid #4b5563;
+        background-color: #f9fafb; /* Light gray input field */
+        color: #111827; /* Dark text */
+        border: 1px solid #d1d5db; /* Standard border */
     }
-    /* --- NEW: Added Chat Input Placeholder Color --- */
     [data-testid="stChatInput"] textarea::placeholder {
-        color: #9ca3af;
+        color: #6b7280; /* Gray placeholder */
     }
     [data-testid="stChatInput"] button { /* Send button */
-        color: #9ca3af;
+        color: #6b7280; /* Gray icon */
         border: none;
     }
     [data-testid="stChatInput"] button:hover {
-        background-color: #374151;
-        color: white;
+        background-color: #e9ecef;
+        color: #111827;
     }
 
 </style>
 """, unsafe_allow_html=True)
-# --- ★★★ END OF CSS BLOCK ★★★ ---
 
 
 # --- Session State Initialization (Unchanged) ---
