@@ -1,18 +1,31 @@
-# Deep-Learning-Model-Final-Project
-Deep Learning Final Project Model: Description to be added later
+# Text Analytics Final Project
 
-1) Execute the environment.yaml in terminal 
+## Project Description
 
-'conda env create -f environment.yaml'
+MedSynth: Intelligent Clinical Summarization
 
-2) run master_pipeline.py
+## Key Features
 
-'python master_pipeline.py'
+## UI Screenshots
 
-3) Wait until all pipeline executes and finishes
+## Setup Instructions
 
-4) Output file should be located in ./BART_RAE_output folder.
+1) Clone Repository: https://github.com/AlvaroMontoyaRuiz/Text-Analytics-Final-Project
 
-5) Datasets can be access using the following OneDrive URL:
+2) pip install -r requirements.txt
 
-https://usfedu-my.sharepoint.com/personal/bermudezm_usf_edu/_layouts/15/onedrive.aspx?id=%2Fpersonal%2Fbermudezm%5Fusf%5Fedu%2FDocuments%2FSpring%202025%2FDeep%20Learning%2FFinal%20Project%20Datasets&ct=1746487585802&or=Teams%2DHL&ga=1&LOF=1
+3) Copy .env.example to .env and add API keys
+
+4) Initialize vector database: `python setup_db`
+
+5) Run: `streamlit run app.py`
+
+## How To
+
+## Team member contributions
+
+## Technologies used (LLM, vector DB, tools, etc.)
+
+## Known limitations
+
+## Future improvements
