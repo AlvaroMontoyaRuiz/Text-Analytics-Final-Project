@@ -1,3 +1,4 @@
+
 #!/usr/bin/env python3
 """
 agents.py
@@ -139,7 +140,12 @@ class BaseAgent:
                     model=self.model,
                     messages=messages,
                     tools=self.tools if self.tools else None,
-                    tool_choice="auto" if self.tools else None,
+                    
+                    # --- ★★★ THIS IS THE FIX ★★★ ---
+                    # Was "auto". This forces the agent to call your RAG tool.
+                    tool_choice="required", 
+                    # --- ★★★ END OF FIX ★★★ ---
+
                     temperature=0.1,
                     stream=False 
                 )
@@ -149,9 +155,7 @@ class BaseAgent:
                     messages.append(assistant_message.model_dump(exclude_none=True))
                     for tool_call in assistant_message.tool_calls:
                         
-                        # --- THIS IS THE FIX ---
                         function_name = tool_call.function.name
-                        # --- END OF FIX ---
                         
                         function_args = json.loads(tool_call.function.arguments)
                         if function_name not in TOOL_REGISTRY:
@@ -163,6 +167,7 @@ class BaseAgent:
                             })
                             continue
                         
+                        # Forcefully inject the ID/Name from app.py
                         function_args["patient_id"] = patient_id
                         function_args["patient_name"] = patient_name
                         
@@ -277,8 +282,8 @@ class ManagerAgent:
             )
             
             if not response.candidates[0].content.parts or not response.candidates[0].content.parts[0].function_call:
-                 print("Error: Manager agent did not call a function, it returned text.")
-                 return "Ambiguous"
+                print("Error: Manager agent did not call a function, it returned text.")
+                return "Ambiguous"
 
             fc = response.candidates[0].content.parts[0].function_call
             if fc.name == "route_query":

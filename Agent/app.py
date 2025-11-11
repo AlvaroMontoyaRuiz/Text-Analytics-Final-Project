@@ -551,6 +551,7 @@ else:
                 st.markdown("**Available Patients (Demo):**")
                 # --- ★★★ PATIENT TAGS BLOCK REPLACED ★★★ ---
                 # --- MODIFICATION: Styled patient tags (matches target image) ---
+                # (This HTML block already matches your data, so it is correct)
                 PATIENTS_HTML = """
                 <div class="patient-line"><span class="patient-tag patient-name">Casey Gray</span><span class="patient-tag patient-id">Subject ID: 10001401</span></div>
                 <div class="patient-line"><span class="patient-tag patient-name">Morgan Foster</span><span class="patient-tag patient-id">Subject ID: 10016742</span></div>
@@ -560,15 +561,28 @@ else:
                 """
                 st.markdown(PATIENTS_HTML, unsafe_allow_html=True)
                 # --- END MODIFICATION ---
+            
+            # --- ★★★ MODIFIED INSTRUCTION BLOCK ★★★ ---
+            # This is the section updated with your correct dates.
+            # Your ingestion script saves dates as YYYY-MM-DD, so the prompts must use that format.
             with col2:
                 st.markdown("**What you can ask:**")
                 st.markdown(
                     """
-                    - **Patient History:** "What is the HPI for patient Casey Gray?"
-                    - **Discharge Info:** "Get the discharge medications for Morgan Foster."
-                    - **Specifics:** "Brief hospital course for Subject ID: 10022373"
+                    **First, find the patient's visit dates:**
+                    - *"What are all the admission dates for Casey Gray?"*
+                    
+                    *(The AI might reply: "Casey Gray was admitted on 2025-07-16.")*
+
+                    **Then, use that date to ask specific questions:**
+                    - **Patient History:** "What is the HPI for Casey Gray on 2025-07-16?"
+                    - **Discharge Info:** "Get the discharge medications for Morgan Foster from their 2025-08-02 admission."
+                    - **Specifics:** "Brief hospital course for Subject ID 10022373 on 2025-10-11."
+                    - **More Examples:** "What was the past medical history for Riley Miller on 2025-07-03?" or "Discharge instructions for Sam Carter from admission 2025-09-23."
                     """
                 )
+            # --- ★★★ END OF MODIFICATION ★★★ ---
+                
             st.warning("**Limitation:** MedSynth is a summarization tool, not a diagnostic one. It cannot provide medical advice or diagnoses.", icon="⚠️")
         
         st.divider()
@@ -714,11 +728,16 @@ else:
                                 # This line sets the context *after* the agent runs
                                 LAST_RETRIEVED_CONTEXT["content"] = agent_to_run.last_context
                             
-                            # --- ★★★ MODIFICATION: Moved expander OUTSIDE chat block ★★★ ---
-                            # This now renders *after* the chat bubble, not inside it
-                            if LAST_RETRIEVED_CONTEXT["content"]:
-                                with st.expander("View Retrieved Context"):
-                                    st.text(LAST_RETRIEVED_CONTEXT["content"])
+                            # --- ★★★ MODIFICATION: Replaced expander with caption ★★★ ---
+                            raw_context = LAST_RETRIEVED_CONTEXT["content"]
+                            if raw_context and "Error:" not in raw_context and "not available" not in raw_context:
+                                # Use regex to find all Note IDs
+                                note_ids = re.findall(r"Note ID:\s*([\w-]+)", raw_context)
+                                if note_ids:
+                                    # Get unique Note IDs
+                                    unique_note_ids = list(dict.fromkeys(note_ids))
+                                    st.caption(f"ℹ️ Information retrieved from: {', '.join(unique_note_ids)}")
+                            # --- ★★★ END OF MODIFICATION ★★★ ---
 
                         elif intent == "Ambiguous":
                             final_response = "Your request is unclear. Please specify if you are looking for **patient history** (symptoms, past procedures) or **discharge information** (hospital course, medications)."
