@@ -148,7 +148,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- ★★★ CSS BLOCK REPLACED ★★★ ---
+# --- ★★★ FINAL CORRECTED HYBRID CSS BLOCK ★★★ ---
 # --- MODIFICATION: Custom Professional CSS (matches target image) ---
 st.markdown("""
 <style>
@@ -208,10 +208,60 @@ st.markdown("""
         fill: #60a5fa;
     }
 
-    /* --- Main Chat Area --- */
+    /* --- Main Chat Area (Light) --- */
     [data-testid="stChatContainer"] {
         background-color: #ffffff;
     }
+
+    /* --- Titles (for Light Content Area) --- */
+    h1 {
+        color: #0072C6;
+        font-family: 'Poppins', sans-serif;
+        font-weight: 600;
+    }
+    h3 {
+        font-family: 'Poppins', sans-serif;
+        font-weight: 600;
+    }
+
+    /* --- Chat Bubbles (for Light Content Area) --- */
+    [data-testid="chat-bubble"] {
+        border-radius: 12px;
+        padding: 16px;
+        font-size: 16px;
+    }
+    /* User chat bubble */
+    [data-testid="chat-bubble"][data-user-bubble="true"] {
+        background-color: #0072C6; /* Professional Blue */
+        color: white;
+    }
+    /* Assistant chat bubble */
+    [data-testid="chat-bubble"]:not([data-user-bubble="true"]) {
+        background-color: #e9ecef; /* Light gray */
+        color: #333;
+    }
+    
+    /* --- Base Buttons (for Light Content Area) --- */
+    /* This styles buttons in the popover and main area */
+    .stButton>button {
+        border-radius: 8px;
+        border: 1px solid #0072C6;
+        color: #0072C6;
+    }
+    .stButton>button:hover {
+        border-color: #00569a;
+        color: #00569a;
+    }
+    /* Primary button (e.g., "Save Changes" in popover) */
+    .stButton>button[kind="primary"] {
+        background-color: #0072C6;
+        color: white;
+        border: 0;
+    }
+    .stButton>button[kind="primary"]:hover {
+        background-color: #00569a;
+    }
+
 
     /* --- Dark Chat Header --- */
     .chat-header {
@@ -221,11 +271,13 @@ st.markdown("""
         border-radius: 8px;
         margin-bottom: 10px;
     }
+    /* Override base h3 color for dark header */
     .chat-header h3 {
         color: white;
         margin: 0;
         padding: 0;
     }
+    /* Override base button style for dark header */
     .chat-header .stButton>button {
         background-color: #374151;
         color: white;
