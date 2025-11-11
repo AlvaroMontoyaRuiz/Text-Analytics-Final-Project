@@ -7,7 +7,7 @@
 ## Key Features
 
 1) Multi-agent structure
-    * Manager Agent(Classifies intent): Google Gemini 2.5 Pro
+    * Manager Agent(Classifies intent): Google Gemini 2.5 flash
         * Sub-agent: History Summarization (GPT-4o Mini) - Handles History of Present Illness + Past Medical History
         * Sub-agent: Discharge Generation (GPT-4o Mini) - Handles Hospital Course + Medication Retrieval
 
