@@ -148,7 +148,8 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# --- MODIFICATION: Custom Professional CSS ---
+# --- ★★★ CSS BLOCK REPLACED ★★★ ---
+# --- MODIFICATION: Custom Professional CSS (matches target image) ---
 st.markdown("""
 <style>
     /* Base font */
@@ -158,73 +159,125 @@ st.markdown("""
 
     /* Main background */
     .stApp {
-        background-color: #f0f2f6; /* Light gray background */
+        background-color: #f9fafb; /* Lightest gray background */
     }
 
-    /* Sidebar style */
+    /* --- Dark Sidebar --- */
     [data-testid="stSidebar"] {
-        background-color: #ffffff;
-        border-right: 1px solid #e0e0e0;
+        background-color: #111827; /* Dark gray */
+        color: #f9fafb;
+    }
+    [data-testid="stSidebar"] h4 {
+        color: #f9fafb;
+    }
+    [data-testid="stSidebar"] .stButton>button {
+        background-color: #374151;
+        color: #f9fafb;
+        border: 1px solid #4b5563;
+    }
+    [data-testid="stSidebar"] .stButton>button:hover {
+        background-color: #4b5563;
+        border-color: #6b7280;
+    }
+    /* "New Chat" button */
+    [data-testid="stSidebar"] .stButton>button[kind="primary"] {
+        background-color: #2563eb; /* Blue */
+        color: white;
+        border: 0;
+    }
+    [data-testid="stSidebar"] .stButton>button[kind="primary"]:hover {
+        background-color: #1d4ed8;
+    }
+    /* Active chat button (like the red one in the image) */
+    [data-testid="stSidebar"] .stButton>button[type="primary"]:not([kind="primary"]) {
+        background-color: #be123c; /* Red */
+        color: white;
+        border: 0;
+    }
+    [data-testid="stSidebar"] .stTextInput input {
+        background-color: #1f2937;
+        color: #f9fafb;
+        border: 1px solid #4b5563;
+    }
+    [data-testid="stSidebar"] .stInfo { /* "Multi-Agent RAG" box */
+        background-color: #1f2937;
+        border: 1px solid #2563eb;
+        color: #60a5fa;
+    }
+    [data-testid="stSidebar"] .stInfo svg {
+        fill: #60a5fa;
     }
 
-    /* Main chat area */
+    /* --- Main Chat Area --- */
     [data-testid="stChatContainer"] {
         background-color: #ffffff;
     }
 
-    /* Chat Bubbles */
-    [data-testid="chat-bubble"] {
-        border-radius: 12px;
-        padding: 16px;
-        font-size: 16px;
-    }
-
-    /* User chat bubble */
-    [data-testid="chat-bubble"][data-user-bubble="true"] {
-        background-color: #0072C6; /* Professional Blue */
+    /* --- Dark Chat Header --- */
+    .chat-header {
+        background-color: #1f2937;
         color: white;
-    }
-    
-    /* Assistant chat bubble */
-    [data-testid="chat-bubble"]:not([data-user-bubble="true"]) {
-        background-color: #e9ecef; /* Light gray */
-        color: #333;
-    }
-
-    /* Buttons */
-    .stButton>button {
+        padding: 10px 16px;
         border-radius: 8px;
-        border: 1px solid #0072C6;
-        color: #0072C6;
+        margin-bottom: 10px;
     }
-    .stButton>button:hover {
-        border-color: #00569a;
-        color: #00569a;
-    }
-    /* Primary button */
-    .stButton>button[kind="primary"] {
-        background-color: #0072C6;
+    .chat-header h3 {
         color: white;
-        border: 0;
+        margin: 0;
+        padding: 0;
     }
-    .stButton>button[kind="primary"]:hover {
-        background-color: #00569a;
+    .chat-header .stButton>button {
+        background-color: #374151;
+        color: white;
+        border: 1px solid #4b5563;
+    }
+    .chat-header .stButton>button:hover {
+        background-color: #4b5563;
     }
 
-    /* Title */
-    h1 {
-        color: #0072C6;
-        font-family: 'Poppins', sans-serif;
-        font-weight: 600;
+    /* --- Patient Tags (for 'How to Use' box) --- */
+    .patient-line { 
+        margin-bottom: 8px; 
+    }
+    .patient-tag { 
+        display: inline-block; 
+        padding: 4px 10px; 
+        border-radius: 6px; 
+        font-family: 'Menlo', 'Courier New', monospace; 
+        font-size: 0.9em; 
+        margin-right: 8px;
+    }
+    .patient-name { 
+        background-color: #374151; 
+        color: #f9fafb; 
+    }
+    .patient-id { 
+        background-color: #059669; 
+        color: #ecfdf5; 
     }
     
-    h3 {
-        font-family: 'Poppins', sans-serif;
-        font-weight: 600;
+    /* --- Dark Chat Input Bar --- */
+    [data-testid="stChatInput"] {
+        background-color: #1f2937;
+        border-top: 1px solid #374151;
+    }
+    [data-testid="stChatInput"] textarea {
+        background-color: #374151;
+        color: white;
+        border: 1px solid #4b5563;
+    }
+    [data-testid="stChatInput"] button { /* Send button */
+        color: #9ca3af;
+        border: none;
+    }
+    [data-testid="stChatInput"] button:hover {
+        background-color: #374151;
+        color: white;
     }
 
 </style>
 """, unsafe_allow_html=True)
+# --- ★★★ END OF CSS BLOCK ★★★ ---
 
 
 # --- Session State Initialization (Unchanged) ---
@@ -335,10 +388,10 @@ else:
                             is_current = session_id == st.session_state.current_session_id
                             button_type = "primary" if is_current else "secondary"
                             if st.button(session["session_name"],
-                                         key=f"session_{session_id}",
-                                         use_container_width=True,
-                                         type=button_type,
-                                         help=f"Updated: {session['updated_at']}"):
+                                          key=f"session_{session_id}",
+                                          use_container_width=True,
+                                          type=button_type,
+                                          help=f"Updated: {session['updated_at']}"):
                                 try:
                                     st.session_state.current_session_id = session_id
                                     db_messages = db.get_session_messages(session_id)
@@ -351,11 +404,11 @@ else:
                             try:
                                 export_json = export_session_json(session_id)
                                 st.download_button("📥",
-                                                 data=export_json,
-                                                 file_name=f"{session.get('session_name', 'chat_export')}_{session_id[:8]}.json",
-                                                 mime="application/json",
-                                                 key=f"export_{session_id}",
-                                                 help="Export chat as JSON")
+                                                  data=export_json,
+                                                  file_name=f"{session.get('session_name', 'chat_export')}_{session_id[:8]}.json",
+                                                  mime="application/json",
+                                                  key=f"export_{session_id}",
+                                                  help="Export chat as JSON")
                             except Exception as e:
                                 st.error(f"Export failed: {e}")
                         with col3:
@@ -385,34 +438,50 @@ else:
         except Exception as e:
             st.error(f"Could not load session details: {e}")
         
-        # --- MODIFICATION: Removed old metrics ---
-        col1, col_spacer, col2 = st.columns([4, 1, 1]) 
-        with col1:
-            st.markdown(f"### {current_session_name}")
-        with col2:
-            with st.popover("⚙️ Options", use_container_width=True):
-                st.markdown("##### Session Management") 
-                new_name = st.text_input("Rename Session:", value=current_session_name, key="popover_rename_input")
-                if st.button("Save Changes", use_container_width=True, type="primary"):
-                    RERUN_NEEDED = False
+        # --- ★★★ CHAT HEADER BLOCK REPLACED ★★★ ---
+        # --- MODIFICATION: Custom Chat Header (matches target image) ---
+        with st.container():
+            st.markdown('<div class="chat-header">', unsafe_allow_html=True)
+            col1, col2, col3 = st.columns([4, 1, 1])
+            
+            with col1:
+                st.markdown(f"### {current_session_name}")
+            
+            with col2:
+                can_regenerate = len(st.session_state.messages) >= 2
+                if st.button("🔄 Regenerate", 
+                            help="Regenerate last response", 
+                            use_container_width=True, 
+                            disabled=not can_regenerate):
+                    st.session_state.regenerate_flag = True
+                    st.rerun()
+
+            with col3:
+                with st.popover("Options", use_container_width=True):
+                    st.markdown("##### Session Management") 
+                    new_name = st.text_input("Rename Session:", value=current_session_name, key="popover_rename_input")
+                    if st.button("Save Changes", use_container_width=True, type="primary"):
+                        RERUN_NEEDED = False
+                        try:
+                            if new_name and new_name != current_session_name:
+                                db.rename_session(st.session_state.current_session_id, new_name)
+                                current_session_name = new_name 
+                                RERUN_NEEDED = True
+                                st.toast("Session renamed.")
+                            if RERUN_NEEDED:
+                                st.rerun()
+                            else:
+                                st.toast("No changes detected.")
+                        except Exception as e:
+                            st.error(f"Failed to save changes: {e}")
+                    st.divider()
                     try:
-                        if new_name and new_name != current_session_name:
-                            db.rename_session(st.session_state.current_session_id, new_name)
-                            current_session_name = new_name 
-                            RERUN_NEEDED = True
-                            st.toast("Session renamed.")
-                        if RERUN_NEEDED:
-                            st.rerun()
-                        else:
-                            st.toast("No changes detected.")
+                        export_json_data = export_session_json(st.session_state.current_session_id)
+                        st.download_button("📥 Export Chat", data=export_json_data, file_name=f"{current_session_name}_{st.session_state.current_session_id[:8]}.json", mime="application/json", use_container_width=True)
                     except Exception as e:
-                        st.error(f"Failed to save changes: {e}")
-                st.divider()
-                try:
-                    export_json_data = export_session_json(st.session_state.current_session_id)
-                    st.download_button("📥 Export Chat", data=export_json_data, file_name=f"{current_session_name}_{st.session_state.current_session_id[:8]}.json", mime="application/json", use_container_width=True)
-                except Exception as e:
-                    st.error("Export failed.")
+                        st.error("Export failed.")
+            st.markdown('</div>', unsafe_allow_html=True)
+        # --- END MODIFICATION ---
         
         # --- MODIFICATION: Added Instruction Header ---
         with st.container(border=True):
@@ -420,15 +489,17 @@ else:
             col1, col2 = st.columns(2)
             with col1:
                 st.markdown("**Available Patients (Demo):**")
-                st.markdown(
-                    """
-                    - `Casey Gray` (or `Subject ID: 10001401`)
-                    - `Morgan Foster` (or `Subject ID: 10016742`)
-                    - `Peyton Brooks` (or `Subject ID: 10022373`)
-                    - `Riley Miller` (or `Subject ID: 10001884`)
-                    - `Sam Carter` (or `Subject ID: 10021348`)
-                    """
-                )
+                # --- ★★★ PATIENT TAGS BLOCK REPLACED ★★★ ---
+                # --- MODIFICATION: Styled patient tags (matches target image) ---
+                PATIENTS_HTML = """
+                <div class="patient-line"><span class="patient-tag patient-name">Casey Gray</span><span class="patient-tag patient-id">Subject ID: 10001401</span></div>
+                <div class="patient-line"><span class="patient-tag patient-name">Morgan Foster</span><span class="patient-tag patient-id">Subject ID: 10016742</span></div>
+                <div class="patient-line"><span class="patient-tag patient-name">Peyton Brooks</span><span class="patient-tag patient-id">Subject ID: 10022373</span></div>
+                <div class="patient-line"><span class="patient-tag patient-name">Riley Miller</span><span class="patient-tag patient-id">Subject ID: 10001884</span></div>
+                <div class="patient-line"><span class="patient-tag patient-name">Sam Carter</span><span class="patient-tag patient-id">Subject ID: 10021348</span></div>
+                """
+                st.markdown(PATIENTS_HTML, unsafe_allow_html=True)
+                # --- END MODIFICATION ---
             with col2:
                 st.markdown("**What you can ask:**")
                 st.markdown(
@@ -482,15 +553,12 @@ else:
             else:
                 user_input = None 
         else:
+            # --- ★★★ CHAT INPUT BLOCK REPLACED ★★★ ---
             # This is the chat input box at the bottom
-            col_input, col_regenerate = st.columns([5, 1]) 
-            with col_input:
-                user_input = st.chat_input("Ask about patient notes (e.g., 'HPI for Casey Gray')...") 
-            with col_regenerate:
-                can_regenerate = len(st.session_state.messages) >= 2
-                if st.button("🔄", help="Regenerate last response", use_container_width=True, disabled=not can_regenerate):
-                    st.session_state.regenerate_flag = True
-                    st.rerun() 
+            # --- MODIFICATION: Removed broken st.columns layout ---
+            # The 'Regenerate' button was moved to the header.
+            user_input = st.chat_input("Ask about patient notes (e.g., 'HPI for Casey Gray')...") 
+            # --- END MODIFICATION ---
 
         # --- **** Main Processing Logic (with Streaming and Regex fix) **** ---
         if user_input:
