@@ -337,6 +337,7 @@ st.markdown("""
 
 </style>
 """, unsafe_allow_html=True)
+# --- ★★★ END OF CSS BLOCK ★★★ ---
 
 
 # --- Session State Initialization (Unchanged) ---
@@ -652,15 +653,27 @@ else:
                         else: 
                             patient_id_filter = id_match.group(2).strip()
                     else:
-                        # --- THIS IS THE CORRECTED REGEX ---
-                        name_match = re.search(
-                            r"(?:for|patient)\s+(?:the\s+)?([A-Za-z]+\s+[A-Za-z]+(?:\s+[A-Za-z]+)?)", 
-                            user_input, 
-                            re.IGNORECASE
-                        )
+                        # --- ★★★ MODIFICATION: Fixed Name Regex ★★★ ---
+                        # The old regex was too greedy and captured "Casey Gray was".
+                        # This new regex specifically looks for the known demo patient names
+                        # to prevent capturing extra words.
+                        KNOWN_PATIENTS = [
+                            "Casey Gray", 
+                            "Morgan Foster", 
+                            "Peyton Brooks", 
+                            "Riley Miller", 
+                            "Sam Carter"
+                        ]
+                        
+                        # Create a regex pattern like (Casey Gray|Morgan Foster|...)
+                        # This dynamically builds the regex from your list of known patients.
+                        name_pattern = "|".join(re.escape(name) for name in KNOWN_PATIENTS)
+                        name_match = re.search(f"({name_pattern})", user_input, re.IGNORECASE)
+                        
                         if name_match:
+                            # Use group(1) which is the captured name (e.g., "Casey Gray")
                             patient_name_filter = name_match.group(1).strip()
-                        # --- END OF REGEX CORRECTION ---
+                        # --- ★★★ END OF MODIFICATION ★★★ ---
                     
                     if not patient_id_filter and not patient_name_filter:
                         final_response = "I cannot proceed without a Patient ID or Name. Please include the patient's ID (e.g., 'Subject ID: 10001401') or full name (e.g., 'for patient Casey Gray') in your request."
@@ -698,10 +711,14 @@ else:
                                 final_response = apply_output_guardrails(response_text)
                                 placeholder.write(final_response)
 
+                                # This line sets the context *after* the agent runs
                                 LAST_RETRIEVED_CONTEXT["content"] = agent_to_run.last_context
-                                if LAST_RETRIEVED_CONTEXT["content"]:
-                                    with st.expander("View Retrieved Context"):
-                                        st.text(LAST_RETRIEVED_CONTEXT["content"])
+                            
+                            # --- ★★★ MODIFICATION: Moved expander OUTSIDE chat block ★★★ ---
+                            # This now renders *after* the chat bubble, not inside it
+                            if LAST_RETRIEVED_CONTEXT["content"]:
+                                with st.expander("View Retrieved Context"):
+                                    st.text(LAST_RETRIEVED_CONTEXT["content"])
 
                         elif intent == "Ambiguous":
                             final_response = "Your request is unclear. Please specify if you are looking for **patient history** (symptoms, past procedures) or **discharge information** (hospital course, medications)."
