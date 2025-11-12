@@ -83,7 +83,7 @@
 ## Technologies used (LLM, vector DB, tools, etc.)
 
 1) LLMs
-    * Google Gemini 2.5 Pro
+    * Google Gemini 2.5 flash
     * GPT-4o Mini
 
 2) Vector Database
